@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AURA | Mission Control Cloud V4.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@300;400;700&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body { background-color: #ffffff; color: #1a1a1a; font-family: 'Urbanist', sans-serif; display: flex; overflow: hidden; }
+        .aura-sidebar { width: 250px; background: #0d0d0d; height: 100vh; position: fixed; left: 0; top: 0; padding: 30px 20px; display: flex; flex-direction: column; gap: 10px; z-index: 100; border-right: 1px solid #222; }
+        .sidebar-btn { background: #1a1a1a; border: 1px solid #333; color: #888; padding: 12px; border-radius: 10px; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 10px; text-decoration: none; cursor: pointer; }
+        .sidebar-btn:hover { border-color: #D4AF37; color: #D4AF37; background: #111; transform: translateX(5px); }
+        .sidebar-label { color: #444; font-size: 8px; font-weight: 900; margin-top: 20px; margin-left: 5px; text-transform: uppercase; letter-spacing: 2px; }
+        .main-content { margin-left: 250px; width: calc(100% - 250px); padding: 40px; height: 100vh; overflow-x: auto; }
+        .oswald { font-family: 'Oswald', sans-serif; text-transform: uppercase; }
+        .gold-text { color: #D4AF37; }
+        .kanban-column { background-color: #f8f9fa; min-width: 320px; border-radius: 16px; height: calc(100vh - 180px); overflow-y: auto; border: 1px solid #eee; flex-shrink: 0; }
+        .task-list { min-height: 100px; height: 100%; }
+        .task-card { background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 12px; padding: 16px; margin-bottom: 12px; transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); cursor: grab; position: relative; overflow: hidden; }
+        .task-card:hover { border-color: #D4AF37; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .img-container { width: calc(100% + 32px); height: 160px; margin: -16px -16px 12px -16px; position: relative; background: #000; overflow: hidden; }
+        .task-img { width: 100%; height: 100%; object-fit: cover; }
+        .prio-normal { border-left: 6px solid #3b82f6; } .prio-medio { border-left: 6px solid #eab308; } .prio-urgente { border-left: 6px solid #ef4444; } 
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .input-aura { width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 8px; margin-top: 4px; font-size: 13px; outline: none; background: white; }
+        .action-icons { position: absolute; top: 12px; right: 12px; display: flex; gap: 10px; z-index: 50; background: white; padding: 2px 8px; border-radius: 20px; }
+        .done-btn:hover { color: #22c55e; }
+    </style>
+</head>
+<body>
+
+    <aside class="aura-sidebar no-print">
+        <div class="mb-6 px-2">
+            <h2 class="text-white oswald text-2xl tracking-tighter">AURA <span class="gold-text">CMD</span></h2>
+        </div>
+        
+        <p class="sidebar-label">Sincronia Cloud</p>
+        <button onclick="saveTasksToCloud()" class="sidebar-btn" style="border-color: #22c55e; color: #22c55e;"><span>☁️</span> Salvar na Nuvem</button>
+        <button onclick="loadTasksFromCloud()" class="sidebar-btn" style="border-color: #3b82f6; color: #3b82f6;"><span>🔄</span> Puxar do Sócio</button>
+        <button onclick="openSyncConfig()" class="sidebar-btn"><span>⚙️</span> Configurar Chave</button>
+
+        <p class="sidebar-label">Estratégico</p>
+        <a href="file:///C:/Users/Alex/Documents/Projeto/Constru%C3%A7%C3%A3o_Custo_Aura_V17.html" class="sidebar-btn"><span>📐</span> Construção de Preço</a>
+        
+        <p class="sidebar-label">Comercial</p>
+        <a href="file:///C:/Users/Alex/Documents/Projeto/Site%20Aura/Prospec%C3%A7%C3%A3o/Prospec%C3%A7%C3%A3o_Aura_V3.html" class="sidebar-btn"><span>🏹</span> Prospecção Hunter</a>
+        <a href="file:///C:/Users/Alex/Documents/Projeto/Cole%C3%A7%C3%A3o%20Aura%20V3.HTML" class="sidebar-btn"><span>👕</span> Produtos</a>
+
+        <p class="sidebar-label">Gestão</p>
+        <button onclick="exportTasks()" class="sidebar-btn"><span>📥</span> Backup local</button>
+        <div class="mt-auto"><button onclick="resetAll()" class="sidebar-btn w-full hover:text-red-500"><span>⚠️</span> Resetar Board</button></div>
+    </aside>
+
+    <main class="main-content">
+        <header class="mb-8 flex justify-between items-center border-b pb-4">
+            <h1 class="text-4xl font-bold oswald tracking-tighter">MISSION <span class="gold-text">CONTROL</span></h1>
+            <button onclick="openModal()" class="bg-slate-900 text-white px-8 py-3 rounded-full oswald text-xs shadow-lg hover:bg-black transition-all">+ Nova Missão</button>
+        </header>
+
+        <div class="flex gap-4 pb-4 overflow-x-auto">
+            <div class="kanban-column p-4" id="col-programar"><h3 class="oswald text-xs mb-4 text-gray-500 border-b pb-2 italic">A Programar</h3><div class="task-list" id="list-programar" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+            <div class="kanban-column p-4" id="col-segunda"><h3 class="oswald text-xs mb-4 text-gray-500 border-b pb-2">Segunda</h3><div class="task-list" id="list-segunda" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+            <div class="kanban-column p-4" id="col-terca"><h3 class="oswald text-xs mb-4 text-gray-500 border-b pb-2">Terça</h3><div class="task-list" id="list-terca" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+            <div class="kanban-column p-4" id="col-quarta"><h3 class="oswald text-xs mb-4 text-gray-500 border-b pb-2">Quarta</h3><div class="task-list" id="list-quarta" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+            <div class="kanban-column p-4" id="col-quinta"><h3 class="oswald text-xs mb-4 text-gray-500 border-b pb-2">Quinta</h3><div class="task-list" id="list-quinta" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+            <div class="kanban-column p-4" id="col-sexta"><h3 class="oswald text-xs mb-4 text-gray-500 border-b pb-2">Sexta</h3><div class="task-list" id="list-sexta" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+            <div class="kanban-column p-4 bg-green-50/50 border-green-100" id="col-concluidos"><h3 class="oswald text-xs mb-4 text-green-600 border-b border-green-200 pb-2">✅ Concluídos</h3><div class="task-list" id="list-concluidos" ondrop="drop(event)" ondragover="allowDrop(event)"></div></div>
+        </div>
+    </main>
+
+    <div id="syncModal" class="modal">
+        <div class="bg-white p-8 rounded-2xl w-[400px] shadow-2xl">
+            <h2 class="oswald mb-4 gold-text">Configurar Sincronia</h2>
+            <div class="space-y-4">
+                <input type="password" id="gh-token" placeholder="Token GitHub (ghp_...)" class="input-aura">
+                <input type="text" id="gh-user" placeholder="Seu Usuário GitHub" class="input-aura">
+                <input type="text" id="gh-repo" placeholder="Repositório (ex: aura)" class="input-aura">
+            </div>
+            <div class="mt-6 flex gap-2">
+                <button onclick="document.getElementById('syncModal').style.display='none'" class="flex-1 border p-2 rounded-lg text-xs font-bold uppercase">Sair</button>
+                <button onclick="saveSyncConfig()" class="flex-1 bg-slate-900 text-white p-2 rounded-lg text-xs font-bold uppercase">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="taskModal" class="modal">
+        <div class="bg-white p-8 rounded-2xl w-[450px] shadow-2xl">
+            <h2 class="oswald mb-4">Nova Missão Aura</h2>
+            <input type="hidden" id="edit-id"><input type="hidden" id="current-list-id">
+            <div class="space-y-3">
+                <input type="text" id="m-title" placeholder="Título da Tarefa" class="input-aura">
+                <input type="text" id="m-label" placeholder="Etiqueta" class="input-aura">
+                <select id="m-resp" class="input-aura"><option value="Alex Fernandes">Alex Fernandes</option><option value="Lucas Sampaio">Lucas Sampaio</option><option value="Ambos">Ambos</option></select>
+                <select id="m-prio" class="input-aura"><option value="prio-normal">Prioridade: Normal</option><option value="prio-medio">Prioridade: Meio Urgente</option><option value="prio-urgente">Prioridade: Urgente</option></select>
+                <textarea id="m-obs" placeholder="Observação Livre..." class="input-aura h-20"></textarea>
+                <textarea id="m-subs" placeholder="Subtarefas (uma por linha)" class="input-aura h-20"></textarea>
+            </div>
+            <div class="mt-6 flex gap-2">
+                <button onclick="closeModal()" class="flex-1 border p-2 rounded-lg text-xs font-bold uppercase">Cancelar</button>
+                <button onclick="saveTask()" class="flex-1 bg-slate-900 text-white p-2 rounded-lg text-xs font-bold uppercase">Salvar Missão</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- MOTOR DE SINCRONIA CLOUD ---
+        async function saveTasksToCloud() {
+            const config = JSON.parse(localStorage.getItem('aura_sync_config'));
+            if(!config || !config.token) return alert("Configure a Chave no menu lateral primeiro!");
+
+            const data = localStorage.getItem('aura-board-v2');
+            const content = btoa(unescape(encodeURIComponent(data)));
+            const url = `https://api.github.com/repos/${config.user}/${config.repo}/contents/tasks_db.json`;
+
+            try {
+                const res = await fetch(url, { headers: { "Authorization": `token ${config.token}` } });
+                const fileData = res.ok ? await res.json() : null;
+                const body = { message: "Cloud Sync Tasks", content: content, sha: fileData ? fileData.sha : null };
+                const saveRes = await fetch(url, { method: "PUT", headers: { "Authorization": `token ${config.token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+                if(saveRes.ok) alert("✅ Missões salvas na nuvem!");
+                else alert("❌ Erro ao sincronizar.");
+            } catch (err) { alert("Falha na conexão Cloud."); }
+        }
+
+        async function loadTasksFromCloud() {
+            const config = JSON.parse(localStorage.getItem('aura_sync_config'));
+            if(!config) return alert("Configure a Chave primeiro!");
+            const url = `https://api.github.com/repos/${config.user}/${config.repo}/contents/tasks_db.json`;
+            try {
+                const res = await fetch(url, { headers: { "Authorization": `token ${config.token}` } });
+                if(!res.ok) return alert("Nenhuma missão encontrada na nuvem.");
+                const fileData = await res.json();
+                const d = decodeURIComponent(escape(atob(fileData.content)));
+                localStorage.setItem('aura-board-v2', d);
+                location.reload();
+            } catch (err) { alert("Erro ao puxar dados."); }
+        }
+
+        function openSyncConfig() {
+            document.getElementById('syncModal').style.display = 'flex';
+            const config = JSON.parse(localStorage.getItem('aura_sync_config')) || {};
+            document.getElementById('gh-token').value = config.token || "";
+            document.getElementById('gh-user').value = config.user || "";
+            document.getElementById('gh-repo').value = config.repo || "aura";
+        }
+
+        function saveSyncConfig() {
+            const config = { token: document.getElementById('gh-token').value, user: document.getElementById('gh-user').value, repo: document.getElementById('gh-repo').value };
+            localStorage.setItem('aura_sync_config', JSON.stringify(config));
+            alert("Chave AURA configurada!"); document.getElementById('syncModal').style.display = 'none';
+        }
+
+        // --- LÓGICA KANBAN (PRESERVADA) ---
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); }
+        function drop(ev) { ev.preventDefault(); const data = ev.dataTransfer.getData("text"); const targetList = ev.target.closest('.task-list'); if (targetList) { targetList.appendChild(document.getElementById(data)); saveBoard(); } }
+        function openModal(editId = null) { document.getElementById('taskModal').style.display = 'flex'; if (editId) { const card = document.getElementById(editId); document.getElementById('edit-id').value = editId; document.getElementById('current-list-id').value = card.closest('.task-list').id; fillModal(editId); } else { document.getElementById('edit-id').value = ""; document.getElementById('current-list-id').value = "list-programar"; document.querySelectorAll('#taskModal .input-aura').forEach(i => i.value = ""); } }
+        function closeModal() { document.getElementById('taskModal').style.display = 'none'; }
+        function fillModal(id) { const data = JSON.parse(localStorage.getItem('aura-board-v2')); for (let list in data) { let t = data[list].find(t => t.id === id); if (t) { document.getElementById('m-title').value = t.title; document.getElementById('m-label').value = t.label; document.getElementById('m-resp').value = t.resp; document.getElementById('m-prio').value = t.prio; document.getElementById('m-obs').value = t.obs || ""; document.getElementById('m-subs').value = t.subs.map(s => s.text).join('\n'); break; } } }
+        function saveTask() { const id = document.getElementById('edit-id').value; const targetListId = document.getElementById('current-list-id').value; const title = document.getElementById('m-title').value; if(!title) return; let existingImg = ""; let existingSubsDone = []; if (id) { const card = document.getElementById(id); existingImg = card.querySelector('.task-img')?.src || ""; card.querySelectorAll('.subtask-item input').forEach(i => existingSubsDone.push(i.checked)); card.remove(); } const task = { id: id || 't-' + Date.now(), title: title, img: existingImg, label: document.getElementById('m-label').value, resp: document.getElementById('m-resp').value, prio: document.getElementById('m-prio').value, date: new Date().toLocaleDateString(), obs: document.getElementById('m-obs').value, subs: document.getElementById('m-subs').value.split('\n').filter(s => s.trim() !== "").map((s, idx) => ({ text: s.trim(), done: existingSubsDone[idx] || false })) }; renderTask(task, targetListId); saveBoard(); closeModal(); }
+        function renderTask(task, listId) { const list = document.getElementById(listId); const card = document.createElement('div'); card.className = `task-card ${task.prio}`; card.id = task.id; card.draggable = true; card.ondragstart = drag; card.onclick = (e) => { if(!e.target.closest('.action-icons') && e.target.type !== 'checkbox') openModal(task.id); }; card.innerHTML = `<div class="action-icons"><div onclick="event.stopPropagation(); completeTask('${task.id}')" style="cursor:pointer">✔</div></div><div class="flex justify-between items-start mb-2"><span class="label-tag bg-slate-100 text-[9px] font-bold p-1 rounded uppercase">${task.label}</span><span class="text-[9px] font-bold text-gray-400">👤 ${task.resp}</span></div><p class="font-bold text-sm mb-1 uppercase">${task.title}</p>${task.obs ? `<p class="text-[10px] text-gray-500 italic mb-2 border-l-2 pl-2">${task.obs}</p>` : ''}<div class="subtasks-container">${task.subs.map((s) => `<div class="subtask-item"><input type="checkbox" ${s.done ? 'checked' : ''} onchange="saveBoard()"><span class="text-[11px] ml-2 ${s.done ? 'completed-text' : ''}">${s.text}</span></div>`).join('')}</div>`; list.appendChild(card); }
+        function completeTask(id) { document.getElementById('list-concluidos').appendChild(document.getElementById(id)); saveBoard(); }
+        function saveBoard() { const boardData = {}; document.querySelectorAll('.kanban-column').forEach(col => { const listId = col.querySelector('.task-list').id; boardData[listId] = []; col.querySelectorAll('.task-card').forEach(card => { const subs = []; card.querySelectorAll('.subtask-item').forEach(si => { subs.push({ text: si.querySelector('span').innerText, done: si.querySelector('input').checked }); }); boardData[listId].push({ id: card.id, title: card.querySelector('p.font-bold').innerText, label: card.querySelector('.label-tag').innerText, resp: card.querySelector('span.text-[9px].font-bold').innerText.replace('👤 ', ''), prio: Array.from(card.classList).find(c => c.startsWith('prio-')), obs: card.querySelector('p.italic')?.innerText || "", subs: subs }); }); }); localStorage.setItem('aura-board-v2', JSON.stringify(boardData)); }
+        function exportTasks() { const data = localStorage.getItem('aura-board-v2'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' })); a.download = `AuraMission_Backup.json`; a.click(); }
+        function resetAll() { if(confirm("Zerar quadro completo?")) { localStorage.removeItem('aura-board-v2'); location.reload(); } }
+        window.onload = () => { const data = JSON.parse(localStorage.getItem('aura-board-v2')); if (data) Object.keys(data).forEach(listId => { const col = document.getElementById(listId); if(col) data[listId].forEach(t => renderTask(t, listId)); }); };
+    </script>
+</body>
+</html>
